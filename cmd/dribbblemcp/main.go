@@ -1,7 +1,7 @@
 // Package main implements an MCP server for Dribbble UI design inspiration.
 //
-// It uses a headless Chromium browser (Playwright) to search public Dribbble
-// pages and return shot images the model can inspect.
+// It uses headless Chrome (chromedp) to search public Dribbble pages and return
+// shot images the model can inspect.
 package main
 
 import (
@@ -21,13 +21,33 @@ import (
 	"github.com/mark3labs/mcp-go/server"
 )
 
+// Injected by GoReleaser / make ldflags.
+var (
+	version = "dev"
+	commit  = "none"
+	date    = "unknown"
+	builtBy = "source"
+)
+
 var (
 	logger *log.Logger
 	client *dribbble.Client
 )
 
 func main() {
+	if len(os.Args) > 1 {
+		switch os.Args[1] {
+		case "--version", "-version", "version", "-v":
+			fmt.Printf("dribbblemcp %s (commit=%s date=%s builtBy=%s)\n", version, commit, date, builtBy)
+			return
+		case "--help", "-h", "help":
+			printHelp()
+			return
+		}
+	}
+
 	logger = log.New(os.Stderr, "[dribbblemcp] ", log.LstdFlags|log.Lmsgprefix)
+	logger.Printf("starting dribbblemcp %s", version)
 
 	session, err := browser.Shared()
 	if err != nil {
@@ -46,7 +66,7 @@ func main() {
 
 	s := server.NewMCPServer(
 		"dribbble",
-		"1.0.0",
+		version,
 		server.WithToolCapabilities(false),
 	)
 
@@ -254,6 +274,25 @@ func buildSearchResult(ctx context.Context, result *dribbble.SearchResult, inclu
 	}
 
 	return &mcp.CallToolResult{Content: contents}, nil
+}
+
+func printHelp() {
+	fmt.Printf(`dribbblemcp %s — Dribbble UI design inspiration MCP server
+
+Usage:
+  dribbblemcp              Run MCP server on stdio
+  dribbblemcp --version    Print version
+  dribbblemcp --help       Show this help
+
+Requirements:
+  Google Chrome or Chromium (override with CHROME_PATH)
+
+Environment:
+  CHROME_PATH              Path to Chrome/Chromium binary
+  DRIBBBLE_MCP_HEADED=1    Run browser headed (debug)
+
+Docs: https://github.com/danecwalker/dribbblemcp
+`, version)
 }
 
 func nonEmpty(s, fallback string) string {

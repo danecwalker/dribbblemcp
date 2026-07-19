@@ -1,8 +1,12 @@
 # dribbblemcp
 
-MCP server that finds **UI design inspiration on Dribbble** and returns shot images the model can actually see.
+[![CI](https://github.com/danecwalker/dribbblemcp/actions/workflows/ci.yml/badge.svg)](https://github.com/danecwalker/dribbblemcp/actions/workflows/ci.yml)
+[![Release](https://github.com/danecwalker/dribbblemcp/actions/workflows/release.yml/badge.svg)](https://github.com/danecwalker/dribbblemcp/actions/workflows/release.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
-Uses your local **Chrome/Chromium** via [chromedp](https://github.com/chromedp/chromedp) — no paid search API keys, no separate browser download. Official Dribbble API v2 only exposes the authenticated user’s own shots, so public inspiration search is done via the public website.
+MCP server that finds **UI design inspiration on Dribbble** and returns shot images your agent can actually see.
+
+Uses your local **Chrome/Chromium** via [chromedp](https://github.com/chromedp/chromedp) — no paid search API keys. Official Dribbble API v2 only exposes the authenticated user’s own shots, so public inspiration search goes through the website in a real browser.
 
 ## Tools
 
@@ -14,74 +18,196 @@ Uses your local **Chrome/Chromium** via [chromedp](https://github.com/chromedp/c
 
 ## Requirements
 
-- Go 1.22+
-- Google Chrome or Chromium installed (macOS Chrome at the default path works out of the box)
+- **Chrome or Chromium** installed (macOS default Chrome path works out of the box)
+- Network access to `dribbble.com` and `cdn.dribbble.com`
+- For building from source: **Go 1.26+**
+
+---
 
 ## Install
 
+### One-liner (macOS / Linux) — recommended
+
+Downloads the latest GitHub Release binary for your OS/arch into `~/.local/bin`:
+
 ```bash
-# From this repo
-make build
-make install              # copies binary to ~/.local/bin
+curl -fsSL https://raw.githubusercontent.com/danecwalker/dribbblemcp/main/install.sh | bash
 ```
 
-### Grok / Claude / Cursor config
+Options:
+
+```bash
+# Specific version
+curl -fsSL https://raw.githubusercontent.com/danecwalker/dribbblemcp/main/install.sh | bash -s -- --version v0.1.0
+
+# Custom install directory
+curl -fsSL https://raw.githubusercontent.com/danecwalker/dribbblemcp/main/install.sh | bash -s -- --dir /usr/local/bin
+```
+
+Ensure `~/.local/bin` is on your `PATH`:
+
+```bash
+# fish
+fish_add_path $HOME/.local/bin
+
+# bash / zsh
+export PATH="$HOME/.local/bin:$PATH"
+```
+
+### Go install
+
+```bash
+go install github.com/danecwalker/dribbblemcp/cmd/dribbblemcp@latest
+```
+
+Binary lands in `$(go env GOPATH)/bin` (often `~/go/bin`).
+
+### Pre-built binaries
+
+1. Open [Releases](https://github.com/danecwalker/dribbblemcp/releases/latest)
+2. Download the archive for your platform:
+
+   | Platform | Archive |
+   |----------|---------|
+   | macOS Apple Silicon | `dribbblemcp_Darwin_arm64.tar.gz` |
+   | macOS Intel | `dribbblemcp_Darwin_x86_64.tar.gz` |
+   | Linux x86_64 | `dribbblemcp_Linux_x86_64.tar.gz` |
+   | Linux arm64 | `dribbblemcp_Linux_arm64.tar.gz` |
+   | Windows x86_64 | `dribbblemcp_Windows_x86_64.zip` |
+
+3. Extract and move `dribbblemcp` onto your `PATH`
+4. Verify checksums with `checksums.txt` from the same release
+
+```bash
+# Example (macOS arm64)
+curl -fsSL -O https://github.com/danecwalker/dribbblemcp/releases/latest/download/dribbblemcp_Darwin_arm64.tar.gz
+tar -xzf dribbblemcp_Darwin_arm64.tar.gz
+install -m 755 dribbblemcp ~/.local/bin/dribbblemcp
+dribbblemcp --version
+```
+
+### From source
+
+```bash
+git clone https://github.com/danecwalker/dribbblemcp.git
+cd dribbblemcp
+make build          # → bin/dribbblemcp
+make install        # → ~/.local/bin/dribbblemcp
+```
+
+---
+
+## Configure your MCP client
+
+### Grok
+
+```bash
+grok mcp add dribbble -- $(which dribbblemcp)
+```
+
+Or edit `~/.grok/config.toml`:
 
 ```toml
-# ~/.grok/config.toml  (or .grok/config.toml in a project)
 [mcp_servers.dribbble]
 command = "/Users/YOU/.local/bin/dribbblemcp"
-# or: command = "/Users/YOU/projects/dribbblemcp/bin/dribbblemcp"
 enabled = true
-startup_timeout_sec = 60   # cold Chromium launch can be slow
+startup_timeout_sec = 60   # cold Chrome launch can be slow
 tool_timeout_sec = 120
 ```
 
-CLI equivalent:
+### Claude Desktop
 
-```bash
-grok mcp add dribbble -- /Users/YOU/.local/bin/dribbblemcp
+`~/Library/Application Support/Claude/claude_desktop_config.json` (macOS):
+
+```json
+{
+  "mcpServers": {
+    "dribbble": {
+      "command": "/Users/YOU/.local/bin/dribbblemcp"
+    }
+  }
+}
 ```
 
-Optional env:
+### Cursor
+
+MCP settings → add server:
+
+```json
+{
+  "mcpServers": {
+    "dribbble": {
+      "command": "/Users/YOU/.local/bin/dribbblemcp"
+    }
+  }
+}
+```
+
+### Environment variables
 
 | Variable | Effect |
 |----------|--------|
 | `CHROME_PATH` | Absolute path to Chrome/Chromium binary |
-| `DRIBBBLE_MCP_HEADED=1` | Run Chrome headed (debug) |
+| `DRIBBBLE_MCP_HEADED=1` | Run Chrome headed (debug WAF / layout issues) |
+
+---
 
 ## Skill
 
-A companion skill lives at:
+Companion skill (query craft + how to turn shots into original design direction):
 
 ```
 .grok/skills/dribbble-inspiration/SKILL.md
 ```
 
-It teaches the agent **when** to pull Dribbble refs, how to write good queries, and how to turn visual observations into original designs (not copies).
+Copy into a project’s `.grok/skills/` or `~/.grok/skills/dribbble-inspiration/`. Trigger with design-inspiration asks or `/dribbble-inspiration`.
+
+---
 
 ## Example flow
 
 1. `search_shots` query=`"SaaS settings page dark mode"`, limit=`6`
 2. Inspect returned images for layout / density / hierarchy
 3. `get_shot` on the best 1–2 URLs for high-res study
-4. Extract principles → apply to your design (colors, spacing scale, component structure)
+4. Extract principles → apply to **your** design (do not clone)
 
-## Notes & limits
-
-- **Personal design-inspiration use.** Dribbble’s terms restrict scraping and require API-only access for products that redistribute their data. This server is intended as a local assistant tool, not a public mirror of Dribbble.
-- Rate-limit yourself. Each call launches page navigations; keep `limit` low (4–8).
-- AWS WAF occasionally challenges automated browsers. If a call returns zero results, retry once; headed mode (`DRIBBBLE_MCP_HEADED=1`) can help diagnose.
-- Always credit designers and link the original shot when presenting inspiration.
+---
 
 ## Development
 
 ```bash
 make build
-make test
-go run ./cmd/dribbblemcp   # speaks MCP over stdio
+make test                 # unit tests
+make test-integration     # live Dribbble (Chrome + network)
+make doctor               # build + test + --version
 ```
+
+### Release (maintainers)
+
+Releases are automated with [GoReleaser](https://goreleaser.com) on version tags:
+
+```bash
+# Local snapshot (no GitHub publish)
+make release-snapshot
+
+# Publish: push a tag — GitHub Actions runs .github/workflows/release.yml
+git tag v0.1.0
+git push origin v0.1.0
+```
+
+Artifacts: multi-arch archives + `checksums.txt` on the [Releases](https://github.com/danecwalker/dribbblemcp/releases) page. The install script always points at the latest release.
+
+Config: [`.goreleaser.yaml`](.goreleaser.yaml) · workflows: [CI](.github/workflows/ci.yml), [Release](.github/workflows/release.yml).
+
+---
+
+## Notes & limits
+
+- **Personal design-inspiration use.** Dribbble’s terms restrict scraping and prefer API-only redistribution. This server is a local assistant tool, not a public mirror of Dribbble.
+- Rate-limit yourself. Each call navigates pages; keep `limit` low (4–8).
+- AWS WAF occasionally challenges automation. If a call returns zero results, retry once; headed mode (`DRIBBBLE_MCP_HEADED=1`) helps diagnose.
+- Always credit designers and link the original shot when presenting inspiration.
 
 ## License
 
-MIT
+[MIT](LICENSE)

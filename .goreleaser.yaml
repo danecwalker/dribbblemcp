@@ -1,0 +1,109 @@
+# yaml-language-server: $schema=https://goreleaser.com/static/schema.json
+version: 2
+
+project_name: dribbblemcp
+
+before:
+  hooks:
+    - go mod tidy
+
+builds:
+  - id: dribbblemcp
+    main: ./cmd/dribbblemcp
+    binary: dribbblemcp
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - linux
+      - darwin
+      - windows
+    goarch:
+      - amd64
+      - arm64
+    ignore:
+      - goos: windows
+        goarch: arm64
+    flags:
+      - -trimpath
+    ldflags:
+      - -s -w
+      - -X main.version={{.Version}}
+      - -X main.commit={{.Commit}}
+      - -X main.date={{.Date}}
+      - -X main.builtBy=goreleaser
+
+archives:
+  - id: default
+    formats: [tar.gz]
+    name_template: >-
+      {{ .ProjectName }}_
+      {{- title .Os }}_
+      {{- if eq .Arch "amd64" }}x86_64
+      {{- else if eq .Arch "386" }}i386
+      {{- else }}{{ .Arch }}{{ end }}
+    files:
+      - README.md
+      - LICENSE*
+      - .grok/skills/dribbble-inspiration/SKILL.md
+    format_overrides:
+      - goos: windows
+        formats: [zip]
+
+checksum:
+  name_template: checksums.txt
+
+changelog:
+  sort: asc
+  use: github
+  filters:
+    exclude:
+      - "^docs:"
+      - "^test:"
+      - "^chore:"
+      - "^ci:"
+      - Merge pull request
+      - Merge branch
+
+snapshot:
+  version_template: "{{ incpatch .Version }}-next"
+
+release:
+  github:
+    owner: danecwalker
+    name: dribbblemcp
+  draft: false
+  prerelease: auto
+  name_template: "dribbblemcp {{.Tag}}"
+  header: |
+    ## dribbblemcp {{.Tag}}
+
+    MCP server for **UI design inspiration from Dribbble** — search shots and return images your agent can actually see.
+
+    ### Install
+
+    **One-liner (macOS / Linux)**
+    ```bash
+    curl -fsSL https://raw.githubusercontent.com/danecwalker/dribbblemcp/main/install.sh | bash
+    ```
+
+    **Go**
+    ```bash
+    go install github.com/danecwalker/dribbblemcp/cmd/dribbblemcp@{{.Tag}}
+    ```
+
+    **Manual** — download the archive for your OS/arch from the assets below, extract `dribbblemcp` onto your `PATH`.
+
+    ### Requirements
+    - Google Chrome or Chromium installed locally
+    - Network access to dribbble.com / cdn.dribbble.com
+
+  footer: |
+    ## Configure
+
+    ```bash
+    grok mcp add dribbble -- $(which dribbblemcp)
+    ```
+
+    Docs: https://github.com/danecwalker/dribbblemcp#readme
+
+    **Full Changelog**: https://github.com/danecwalker/dribbblemcp/compare/{{.PreviousTag}}...{{.Tag}}

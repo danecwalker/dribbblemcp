@@ -2,9 +2,12 @@
 /dribbblemcp
 /bin/
 /dist/
+/build/
 *.exe
 *.test
 *.out
+coverage.out
+coverage.html
 
 # Go
 /vendor/
