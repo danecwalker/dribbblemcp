@@ -1,0 +1,24 @@
+# Binaries
+/dribbblemcp
+/bin/
+/dist/
+*.exe
+*.test
+*.out
+
+# Go
+/vendor/
+
+# IDE / OS
+.DS_Store
+.idea/
+.vscode/
+*.swp
+
+# Env / secrets
+.env
+.env.*
+
+# Playwright
+playwright-report/
+test-results/
